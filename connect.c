@@ -2288,6 +2288,7 @@ cifs_put_smb_ses(struct cifs_ses *ses)
 	list_del_init(&ses->smb_ses_list);
 	spin_unlock(&cifs_tcp_ses_lock);
 
+	cancel_delayed_work_sync(&ses->clear_cached_rc);
 	sesInfoFree(ses);
 	cifs_put_tcp_session(server);
 }
@@ -2422,6 +2423,16 @@ cifs_set_cifscreds(struct smb_vol *vol __attribute__((unused)),
 }
 #endif /* CONFIG_KEYS */
 
+static void clear_cached_rc(struct work_struct *work)
+{
+	struct cifs_ses *ses = container_of(work, struct cifs_ses,
+						clear_cached_rc.work);
+
+	mutex_lock(&ses->session_mutex);
+	ses->cached_rc = 0;
+	mutex_unlock(&ses->session_mutex);
+}
+
 static struct cifs_ses *
 cifs_get_smb_ses(struct TCP_Server_Info *server, struct smb_vol *volume_info)
 {
@@ -2501,6 +2512,9 @@ cifs_get_smb_ses(struct TCP_Server_Info *server, struct smb_vol *volume_info)
 
 	ses->sectype = volume_info->sectype;
 	ses->sign = volume_info->sign;
+
+	ses->cached_rc = 0;
+	INIT_DELAYED_WORK(&ses->clear_cached_rc, clear_cached_rc);
 
 	mutex_lock(&ses->session_mutex);
 	rc = cifs_negotiate_protocol(xid, ses);
