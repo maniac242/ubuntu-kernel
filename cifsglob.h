@@ -87,6 +87,8 @@
  */
 #define SMB2_MAX_CREDITS_AVAILABLE 32000
 
+#define SMB_NEGATIVE_CACHE_INTERVAL 10
+
 #include "cifspdu.h"
 
 #ifndef XATTR_DOS_ATTRIB
@@ -840,6 +842,8 @@ struct cifs_ses {
 	enum securityEnum sectype; /* what security flavor was specified? */
 	bool sign;		/* is signing required? */
 	bool need_reconnect:1; /* connection reset, uid now invalid */
+	bool cached_rc;
+	struct delayed_work clear_cached_rc;
 #ifdef CONFIG_CIFS_SMB2
 	__u16 session_flags;
 	__u8 smb3signingkey[SMB3_SIGN_KEY_SIZE];

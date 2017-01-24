@@ -179,8 +179,24 @@ cifs_reconnect_tcon(struct cifs_tcon *tcon, int smb_command)
 	 */
 	mutex_lock(&ses->session_mutex);
 	rc = cifs_negotiate_protocol(0, ses);
-	if (rc == 0 && ses->need_reconnect)
-		rc = cifs_setup_session(0, ses, nls_codepage);
+	if (rc) {
+		mutex_unlock(&ses->session_mutex);
+		goto out;
+	}
+
+	if (ses->need_reconnect) {
+		if (ses->cached_rc) {
+			rc = ses->cached_rc;
+		} else {
+			rc = cifs_setup_session(0, ses, nls_codepage);
+			if (rc == -EACCES) {
+				queue_delayed_work(cifsiod_wq,
+					&ses->clear_cached_rc,
+					SMB_NEGATIVE_CACHE_INTERVAL * HZ);
+				ses->cached_rc = rc;
+			}
+		}
+	}
 
 	/* do we need to reconnect tcon? */
 	if (rc || !tcon->need_reconnect) {
