@@ -2428,6 +2428,8 @@ static void clear_cached_rc(struct work_struct *work)
 	struct cifs_ses *ses = container_of(work, struct cifs_ses,
 						clear_cached_rc.work);
 
+        cifs_dbg(VFS, "Enabling session again\n");
+
 	mutex_lock(&ses->session_mutex);
 	ses->cached_rc = 0;
 	mutex_unlock(&ses->session_mutex);

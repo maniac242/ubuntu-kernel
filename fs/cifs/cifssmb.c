@@ -186,14 +186,15 @@ cifs_reconnect_tcon(struct cifs_tcon *tcon, int smb_command)
 
 	if (ses->need_reconnect) {
 		if (ses->cached_rc) {
-			rc = ses->cached_rc;
+			rc = -EACCES;
 		} else {
 			rc = cifs_setup_session(0, ses, nls_codepage);
 			if (rc == -EACCES) {
 				queue_delayed_work(cifsiod_wq,
 					&ses->clear_cached_rc,
 					SMB_NEGATIVE_CACHE_INTERVAL * HZ);
-				ses->cached_rc = rc;
+				ses->cached_rc = 1;
+				cifs_dbg(VFS, "Disabling session for %ds due to rc = %d\n", SMB_NEGATIVE_CACHE_INTERVAL, rc);
 			}
 		}
 	}
